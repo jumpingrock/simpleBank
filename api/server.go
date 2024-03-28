@@ -12,6 +12,8 @@ type Server struct {
 }
 
 func NewServer(store db.Store) *Server {
+	//to suppress debug mode for gin
+	//gin.SetMode(gin.ReleaseMode)
 	server := &Server{store: store}
 	router := gin.Default()
 

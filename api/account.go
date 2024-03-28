@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	db "github.com/simpleBank/db/sqlc"
 	"net/http"
@@ -55,6 +56,8 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+
+	//account := db.Account{}
 
 	ctx.JSON(http.StatusOK, account)
 }
