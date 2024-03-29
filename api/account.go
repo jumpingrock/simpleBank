@@ -73,8 +73,7 @@ func (server *Server) listAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	println("==>", req.PageID)
-	println("offset==>", (req.PageID-1)*req.PageSize)
+
 	arg := db.ListAccountsParams{
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
