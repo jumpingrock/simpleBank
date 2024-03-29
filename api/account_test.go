@@ -100,6 +100,91 @@ func TestGetAccountAPI(t *testing.T) {
 	}
 }
 
+func TestCreateAccountAPI(t *testing.T) {
+	type Query struct {
+		Owner    string
+		Currency string
+	}
+
+	account := randomAccount()
+	//account.Balance = 0
+	fmt.Println("===>>", account)
+	testCases := []struct {
+		name          string
+		body          Query
+		buildStub     func(store *mockdb.MockStore)
+		checkResponse func(recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name: "OK",
+			body: Query{Owner: account.Owner, Currency: account.Currency},
+			buildStub: func(store *mockdb.MockStore) {
+
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(account, nil)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+				requireBodyMatchAccount(t, recorder.Body, account)
+			},
+		},
+		{
+			name: "BadRequestInvalidCurrency",
+			body: Query{Owner: account.Owner, Currency: "MYR"},
+			buildStub: func(store *mockdb.MockStore) {
+
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name: "InternalServerError",
+			body: Query{Owner: account.Owner, Currency: account.Currency},
+			buildStub: func(store *mockdb.MockStore) {
+
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(db.Account{}, sql.ErrConnDone)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			tc.buildStub(store)
+
+			server := NewServer(store)
+			recorder := httptest.NewRecorder()
+
+			// marshal data body to json
+			data, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			url := "/accounts"
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+			require.NoError(t, err)
+
+			server.router.ServeHTTP(recorder, request)
+			tc.checkResponse(recorder)
+		})
+	}
+}
+
 func TestListAccountAPI(t *testing.T) {
 	type Query struct {
 		PageID   int32
@@ -218,8 +303,8 @@ func randomAccount() db.Account {
 func requireBodyMatchAccount(t *testing.T, body *bytes.Buffer, account db.Account) {
 	//data, err := ioutil.ReadAll()
 	data, err := io.ReadAll(body)
-	require.NoError(t, err)
 
+	require.NoError(t, err)
 	var gotAccount db.Account
 	err = json.Unmarshal(data, &gotAccount)
 	require.NoError(t, err)
