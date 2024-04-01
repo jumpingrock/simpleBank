@@ -107,8 +107,7 @@ func TestCreateAccountAPI(t *testing.T) {
 	}
 
 	account := randomAccount()
-	//account.Balance = 0
-	fmt.Println("===>>", account)
+
 	testCases := []struct {
 		name          string
 		body          Query
