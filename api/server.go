@@ -6,18 +6,30 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	db "github.com/simpleBank/db/sqlc"
+	"github.com/simpleBank/token"
+	"github.com/simpleBank/util"
 )
 
 // Server this server will serve all HTTP request for our banking service
 type Server struct {
-	store  db.Store
-	router *gin.Engine
+	config     util.Config
+	store      db.Store
+	tokenMaker token.Maker
+	router     *gin.Engine
 }
 
-func NewServer(store db.Store) *Server {
+func NewServer(config util.Config, store db.Store) (*Server, error) {
 	//to suppress debug mode for gin
 	//gin.SetMode(gin.ReleaseMode)
-	server := &Server{store: store}
+	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create token maker: %w", err)
+	}
+	server := &Server{
+		config:     config,
+		tokenMaker: tokenMaker,
+		store:      store,
+	}
 	router := gin.Default()
 
 	v, ok := binding.Validator.Engine().(*validator.Validate)
@@ -37,7 +49,7 @@ func NewServer(store db.Store) *Server {
 	router.POST("/transfers", server.createTransfer)
 
 	server.router = router
-	return server
+	return server, nil
 }
 
 func (server *Server) Start(address string) error {
