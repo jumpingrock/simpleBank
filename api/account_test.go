@@ -212,6 +212,21 @@ func TestCreateAccountAPI(t *testing.T) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
+		{
+			name: "NoAuthorization",
+			body: Query{Owner: account.Owner, Currency: account.Currency},
+			buildStub: func(store *mockdb.MockStore) {
+
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
 	}
 
 	for i := range testCases {
@@ -352,7 +367,7 @@ func TestListAccountAPI(t *testing.T) {
 			},
 		},
 		{
-			name:  "Unauthorised",
+			name:  "NoAuthorisation",
 			query: Query{PageID: 1, PageSize: 11},
 			buildStub: func(store *mockdb.MockStore) {
 
